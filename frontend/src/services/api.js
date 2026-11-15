@@ -46,6 +46,7 @@ api.interceptors.response.use(
 export const profileApi = {
   create: (data) => api.post('/profile/create', data),
   join: (data) => api.post('/profile/join', data),
+  login: (data) => api.post('/profile/login', data),
   get: () => api.get('/profile'),
   update: (data) => api.put('/profile', data),
   getMembers: () => api.get('/profile/members'),

@@ -41,6 +41,29 @@ export function ProfileProvider({ children }) {
     loadProfile()
   }, [loadProfile])
 
+  const saveToRecent = (prof, passcode, role = 'owner') => {
+    try {
+      const id = prof?.id || prof?.profileId
+      if (!id) return
+      const existing = JSON.parse(localStorage.getItem('savedProfiles') || '[]')
+      const filtered = existing.filter(p => p.profileId !== id)
+      const updated = [
+        {
+          profileId: id,
+          elderlyName: prof.elderlyName || 'Patient',
+          email: prof.email || '',
+          passcode: passcode || '',
+          role,
+          lastActive: new Date().toISOString(),
+        },
+        ...filtered,
+      ].slice(0, 5)
+      localStorage.setItem('savedProfiles', JSON.stringify(updated))
+    } catch (e) {
+      console.warn('Could not save profile to recent:', e)
+    }
+  }
+
   const createProfile = async (data) => {
     setIsLoading(true)
     setError(null)
@@ -55,6 +78,7 @@ export function ProfileProvider({ children }) {
       if (passcode) localStorage.setItem('passcode', passcode)
       setProfile(prof)
       setMember({ role: 'owner', name: data.elderlyName })
+      saveToRecent(prof, passcode, 'owner')
       return { profileId, passcode, profile: prof, ...resData }
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to create profile'
@@ -81,6 +105,7 @@ export function ProfileProvider({ children }) {
       if (resData.memberId) localStorage.setItem('memberId', resData.memberId)
       setProfile(prof)
       setMember(mem)
+      saveToRecent(prof, passcode, mem.role)
       return { profileId, passcode, profile: prof, member: mem, ...resData }
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to join profile'
@@ -91,8 +116,36 @@ export function ProfileProvider({ children }) {
     }
   }
 
+  const loginProfile = async (identifier, passcode) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await profileApi.login({ identifier, passcode })
+      const resData = res.data || {}
+      const profileId = resData.profileId || resData.data?.profileId
+      const code = resData.passcode || passcode
+      const prof = resData.profile || resData.data?.profile || { id: profileId }
+      const mem = resData.member || resData.data?.member || { role: 'owner', name: prof.elderlyName }
+
+      if (profileId) localStorage.setItem('profileId', profileId)
+      if (code) localStorage.setItem('passcode', code)
+      setProfile(prof)
+      setMember(mem)
+      saveToRecent(prof, code, mem.role)
+      return { profileId, passcode: code, profile: prof, member: mem, ...resData }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to log in'
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const logout = () => {
-    localStorage.clear()
+    localStorage.removeItem('profileId')
+    localStorage.removeItem('passcode')
+    localStorage.removeItem('memberId')
     setProfile(null)
     setMember(null)
     setError(null)
@@ -114,7 +167,7 @@ export function ProfileProvider({ children }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, member, isLoading, error, createProfile, joinProfile, logout, updateProfile, loadProfile }}>
+    <ProfileContext.Provider value={{ profile, member, isLoading, error, createProfile, joinProfile, loginProfile, logout, updateProfile, loadProfile }}>
       {children}
     </ProfileContext.Provider>
   )

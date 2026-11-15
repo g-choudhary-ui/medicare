@@ -36,6 +36,11 @@ const createSchema = Joi.object({
   primaryDoctor: Joi.string().max(100).optional().allow('', null),
 });
 
+const loginSchema = Joi.object({
+  identifier: Joi.string().required(),
+  passcode: Joi.string().required(),
+});
+
 const joinSchema = Joi.object({
   profileId: Joi.string().required(),
   passcode: Joi.string().required(),
@@ -111,6 +116,86 @@ router.post('/create', async (req, res) => {
   } catch (err) {
     console.error('[Profile Create]', err);
     res.status(500).json({ success: false, error: 'Failed to create profile' });
+  }
+});
+
+// ── POST /api/profile/login ────────────────────────────────────────────────────
+router.post('/login', async (req, res) => {
+  try {
+    const { error, value } = loginSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your email or Profile ID and passcode',
+        message: 'Please enter your email or Profile ID and passcode',
+      });
+    }
+
+    const { identifier, passcode } = value;
+    const cleanId = (identifier || '').trim();
+    const cleanPass = (passcode || '').trim();
+
+    let profileDoc = null;
+
+    // 1. Direct document ID check
+    const directSnap = await db.collection('profiles').doc(cleanId).get();
+    if (directSnap.exists) {
+      profileDoc = directSnap;
+    } else {
+      // 2. Query by email (lowercase)
+      const emailSnap = await db.collection('profiles').where('email', '==', cleanId.toLowerCase()).limit(1).get();
+      if (!emailSnap.empty) {
+        profileDoc = emailSnap.docs[0];
+      } else {
+        // 3. Query by exact email
+        const exactEmailSnap = await db.collection('profiles').where('email', '==', cleanId).limit(1).get();
+        if (!exactEmailSnap.empty) {
+          profileDoc = exactEmailSnap.docs[0];
+        } else {
+          // 4. Query by elderly patient name
+          const nameSnap = await db.collection('profiles').where('elderlyName', '==', cleanId).limit(1).get();
+          if (!nameSnap.empty) {
+            profileDoc = nameSnap.docs[0];
+          }
+        }
+      }
+    }
+
+    if (!profileDoc) {
+      return res.status(404).json({
+        success: false,
+        error: 'No profile found with that Email or Profile ID',
+        message: 'No profile found with that Email or Profile ID',
+      });
+    }
+
+    const profileData = profileDoc.data();
+    const isValid = (await bcrypt.compare(cleanPass, profileData.passcodeHash)) ||
+                    (await bcrypt.compare(cleanPass.toUpperCase(), profileData.passcodeHash));
+
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Incorrect passcode. Please check your 6-character code.',
+        message: 'Incorrect passcode. Please check your 6-character code.',
+      });
+    }
+
+    const { passcodeHash: _, ...safeProfile } = profileData;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        profileId: profileDoc.id,
+        passcode: cleanPass.toUpperCase(),
+        profile: { ...safeProfile, id: profileDoc.id },
+        member: { id: profileDoc.id, name: profileData.elderlyName, role: 'owner' },
+        message: `Welcome back, ${profileData.elderlyName}!`,
+      },
+    });
+  } catch (err) {
+    console.error('[Profile Login]', err);
+    res.status(500).json({ success: false, error: 'Failed to log in', message: 'Failed to log in' });
   }
 });
 
