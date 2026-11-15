@@ -243,6 +243,26 @@ gcloud builds triggers create github \
 
 ---
 
+## ⚡ Instant 1-Click Deployment on Render
+
+Render provides free, instant cloud hosting with zero credit-card or billing requirements:
+
+1. **Open Render Dashboard**: Visit [dashboard.render.com](https://dashboard.render.com).
+2. **Create New Web Service**: Click **New +** &rarr; **Web Service** &rarr; Select GitHub repo `https://github.com/g-choudhary-ui/medicare`.
+3. **Configure Settings**:
+   - **Environment / Runtime**: `Docker` (automatically uses root `Dockerfile`)
+   - **Plan**: `Free`
+   - **Health Check Path**: `/health`
+4. **Add Environment Variables**:
+   - `PORT`: `8080`
+   - `NODE_ENV`: `production`
+   - `FIREBASE_PROJECT_ID`: `medicare-hackathon-ec64f`
+   - `FIREBASE_CLIENT_EMAIL`: `firebase-adminsdk-fbsvc@medicare-hackathon-ec64f.iam.gserviceaccount.com`
+   - `FIREBASE_PRIVATE_KEY`: `[Your Service Account Private Key]`
+5. **Click "Deploy Web Service"** &rarr; Live in ~2 minutes at `https://medicare-xxxx.onrender.com`!
+
+---
+
 ## 🔧 Environment Variables
 
 | Variable | Required | Description |
