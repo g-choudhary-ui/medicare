@@ -237,6 +237,22 @@ export default function Home() {
             </span>
           ))}
         </div>
+
+        {/* Active Session Shortcut */}
+        {profile && (
+          <div className="max-w-md mx-auto mt-6 p-4 bg-teal-500/40 border-2 border-teal-300 rounded-2xl flex items-center justify-between text-white backdrop-blur-md shadow-lg">
+            <div className="text-left">
+              <p className="text-xs text-teal-200 uppercase tracking-wide font-bold">Currently Signed In</p>
+              <p className="font-bold text-lg">{profile.elderlyName}</p>
+            </div>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-5 py-2.5 bg-white hover:bg-teal-50 text-teal-800 font-extrabold rounded-xl shadow-md transition-all flex items-center gap-2 text-base"
+            >
+              Dashboard →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cards */}

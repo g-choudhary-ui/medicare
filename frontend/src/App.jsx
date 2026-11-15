@@ -46,7 +46,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={profile ? <Navigate to="/dashboard" replace /> : <Home />} />
+      <Route path="/" element={<Home />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/medications" element={<ProtectedRoute><Medications /></ProtectedRoute>} />
       <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
