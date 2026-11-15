@@ -1,27 +1,33 @@
-# MediCare — Single-stage Dockerfile for Google Cloud Run
-# Node 18 Alpine keeps the image lean
-FROM node:18-alpine
+# ── Stage 1: Build React Frontend ─────────────────────────────────────
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/frontend
 
-# Install dumb-init for proper signal handling in containers
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# ── Stage 2: Production Express Runner ────────────────────────────────
+FROM node:18-alpine AS runner
 RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
-# Install backend production dependencies first (layer cache-friendly)
+# Install backend production dependencies
 COPY backend/package*.json ./
 RUN npm ci --omit=dev
 
-# Copy backend source
+# Copy backend application source
 COPY backend/ ./
 
-# Copy pre-built React frontend into ./public so Express can serve it
-COPY frontend/dist/ ./public/
+# Copy pre-built React frontend assets from Stage 1 into ./public
+COPY --from=frontend-builder /app/frontend/dist/ ./public/
 
-# Cloud Run requires the app to listen on 8080
+# Google Cloud Run expects container to listen on 8080
 EXPOSE 8080
 ENV NODE_ENV=production \
     PORT=8080
 
-# Use dumb-init as PID 1 to handle signals correctly
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
