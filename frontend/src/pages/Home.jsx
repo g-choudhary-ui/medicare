@@ -60,7 +60,7 @@ function PasscodeModal({ passcode, profileId, onClose }) {
 }
 
 export default function Home() {
-  const { createProfile, joinProfile, loginProfile } = useProfile()
+  const { profile, createProfile, joinProfile, loginProfile } = useProfile()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('login') // 'login' | 'create' | 'join'
   const [loading, setLoading] = useState(false)
