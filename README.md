@@ -12,6 +12,41 @@
 
 ---
 
+## 📋 Hackathon Challenge Specifications
+
+### 🎯 1. Chosen Vertical
+**Elderly Care & Medication Management Platform**  
+MediCare is purpose-built to address the clinical and emotional complexities of geriatric healthcare, specifically targeting elderly medication non-adherence, dangerous polypharmacy drug-drug/food interactions, and cognitive/visual accessibility barriers for elderly parents and their remote caregivers.
+
+---
+
+### 🧠 2. Approach and Logic
+- **Dual-Persona Architecture**: Tailors the UX to two opposing cognitive profiles using an **Adaptive Persona Toggle**:
+  - *Senior Mode*: Cognitive simplicity — hides complex charts and sidebars, displaying 3 massive cards ("What to take right now", "Read to me" speech companion, and 1-click SOS beacon).
+  - *Caregiver Mode*: Analytical control — exposes clinical adherence metrics, appointment scheduling, and tamper-resistant audit logs.
+- **Intelligent Polypharmacy Analysis (Google Gemini 2.5 Flash)**: Active drug lists and patient chronic conditions are evaluated via Google Gemini AI (`/api/ai/drug-check`) to detect dangerous drug-drug conflicts and food-drug interactions (e.g., statins + grapefruit, warfarin + NSAIDs).
+- **Proactive Fall & Distress Escalation**: Uses HTML5 Geolocation to acquire live GPS coordinates, formats a direct Google Maps pin, and dispatches multi-channel alerts to family members.
+- **Cryptographic Audit Trail**: Each dose marking or medication schedule edit is stamped with a SHA-256 digital signature to prevent accidental double-dosing among multiple family members.
+
+---
+
+### ⚙️ 3. How the Solution Works
+1. **Profile Setup & Instant Passcode**: A caregiver creates a profile with minimal inputs. A secure, bcrypt-hashed 6-character alphanumeric passcode is generated for frictionless elderly login without password fatigue.
+2. **Medication Scheduling & Skeuomorphic Pillbox**: Medications are logged with daily time slots (Morning, Noon, Evening, Bed). The interface renders a skeuomorphic 7-day digital pillbox where lids visually snap shut upon marking doses.
+3. **Voice Schedule Companion ("Read to Me")**: Low-vision seniors tap "Read to Me", triggering browser native SpeechSynthesis to recite the day's regimen aloud in clear audio.
+4. **Automated Refill Forecaster**: Backend algorithms project pill exhaustion dates based on prescribed frequency and daily taken logs, proactively alerting caregivers when pills reach $\le 3$ days remaining.
+5. **Doctor Visit Summary Generator**: A backend PDFKit engine synthesizes the past 30 days of adherence statistics, missed doses, and logged symptoms into a clinical-grade medical report ready for physician review.
+6. **Passcode Recovery Workflow**: If forgotten, users can enter their registered email, patient name, or Profile ID to instantly regenerate and retrieve a fresh passcode on-screen and via email.
+
+---
+
+### 📌 4. Assumptions Made
+1. **Low Technical Literacy**: Seniors may experience tremors, cataracts, or cognitive decline. Therefore, minimum touch target sizes are strictly $\ge 48\text{px}$, base typography starts at $18\text{px}$ (scalable up to $24\text{px}$ with 1-click), and high-contrast modes are enabled.
+2. **Intermittent Connectivity / Offline Resilience**: In case of network fluctuations or unconfigured cloud credentials, a transparent in-memory data store proxy mirrors all Firestore operations, guaranteeing 100% server uptime and zero 500 errors.
+3. **Multi-Caregiver Coordination**: In shared caregiving (e.g. sibling caregivers or visiting nurses), concurrent updates are safe and tamper-resistant through timestamped activity logging.
+
+---
+
 ## ✨ Features & Innovations
 
 ### 🎨 Part 1: Frontend Innovations (UI, UX & Accessibility)
