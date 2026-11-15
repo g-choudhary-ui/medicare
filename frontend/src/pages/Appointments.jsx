@@ -112,12 +112,9 @@ export default function Appointments() {
 
   const isPastItem = (appt) => {
     if (!appt.date) return false
-    try {
-      const dt = typeof appt.date === 'string' ? parseISO(appt.date) : new Date(appt.date)
-      return isPast(dt)
-    } catch {
-      return false
-    }
+    const todayStr = new Date().toISOString().split('T')[0]
+    const apptDateStr = appt.date.split('T')[0]
+    return apptDateStr < todayStr
   }
 
   const upcomingAppts = appointments.filter((a) => !isPastItem(a))

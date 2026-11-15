@@ -52,20 +52,25 @@ const joinSchema = Joi.object({
 
 const updateSchema = Joi.object({
   elderlyName: Joi.string().min(2).max(100).optional(),
-  email: Joi.string().email().optional(),
-  phone: Joi.string().pattern(/^[+\d\s\-().]{7,20}$/).optional(),
+  email: Joi.string().email().allow('', null).optional(),
+  phone: Joi.string().allow('', null).optional(),
   bloodGroup: Joi.string().valid('A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown').optional(),
   allergies: Joi.array().items(Joi.string().max(100)).optional(),
   conditions: Joi.array().items(Joi.string().max(200)).optional(),
   emergencyContact: Joi.object({
-    name: Joi.string().min(2).max(100).optional(),
-    phone: Joi.string().pattern(/^[+\d\s\-().]{7,20}$/).optional(),
-    relationship: Joi.string().max(50).optional(),
+    name: Joi.string().allow('', null).optional(),
+    phone: Joi.string().allow('', null).optional(),
+    relationship: Joi.string().allow('', null).optional(),
   }).optional(),
-  dateOfBirth: Joi.string().optional(),
-  address: Joi.string().max(300).optional(),
-  primaryDoctor: Joi.string().max(100).optional(),
-});
+  preferences: Joi.object({
+    emailReminders: Joi.boolean().optional(),
+    soundAlerts: Joi.boolean().optional(),
+  }).optional(),
+  emailReminders: Joi.boolean().optional(),
+  dateOfBirth: Joi.string().allow('', null).optional(),
+  address: Joi.string().max(300).allow('', null).optional(),
+  primaryDoctor: Joi.string().max(100).allow('', null).optional(),
+}).unknown(true);
 
 // ── POST /api/profile/create ───────────────────────────────────────────────────
 router.post('/create', async (req, res) => {
@@ -316,7 +321,16 @@ router.put('/', auth, async (req, res) => {
     await db.collection('profiles').doc(profileId).update(updates);
     await logActivity(profileId, memberId, member.name, 'PROFILE_UPDATED', { fields: Object.keys(value) });
 
-    res.json({ success: true, data: { message: 'Profile updated successfully' } });
+    const updatedDoc = await db.collection('profiles').doc(profileId).get();
+    const { passcodeHash: _, ...safeProfile } = updatedDoc.data();
+
+    res.json({
+      success: true,
+      data: {
+        profile: { id: profileId, ...safeProfile },
+        message: 'Profile updated successfully',
+      },
+    });
   } catch (err) {
     console.error('[Profile Update]', err);
     res.status(500).json({ success: false, error: 'Failed to update profile' });

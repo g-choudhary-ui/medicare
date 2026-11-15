@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { medicationsApi } from '../services/api'
 import MedicationCard from '../components/MedicationCard'
+import PillOrganizer from '../components/PillOrganizer'
+import RefillForecastCard from '../components/RefillForecastCard'
 import toast from 'react-hot-toast'
-import { Plus, X, Pill, Filter, CheckCircle2, Search } from 'lucide-react'
+import { Plus, X, Pill, Filter, CheckCircle2, Search, LayoutGrid, Calendar, PackageCheck } from 'lucide-react'
 
 const COLOR_OPTIONS = [
   { label: 'Teal', value: '#0d9488' },
@@ -32,6 +34,7 @@ export default function Medications() {
   const [medications, setMedications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // 'all' | 'active' | 'today'
+  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'pillbox' | 'refill'
   const [searchQuery, setSearchQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingMed, setEditingMed] = useState(null)
@@ -192,8 +195,36 @@ export default function Medications() {
         </button>
       </div>
 
-      {/* Filters and Search Bar */}
+      {/* Filters, View Toggle and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl w-full md:w-auto">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[38px] ${
+              viewMode === 'grid' ? 'bg-white text-teal-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <LayoutGrid size={15} /> Grid
+          </button>
+          <button
+            onClick={() => setViewMode('pillbox')}
+            className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[38px] ${
+              viewMode === 'pillbox' ? 'bg-white text-teal-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Calendar size={15} /> 7-Day Pillbox
+          </button>
+          <button
+            onClick={() => setViewMode('refill')}
+            className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[38px] ${
+              viewMode === 'refill' ? 'bg-white text-teal-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <PackageCheck size={15} /> Refill Forecaster
+          </button>
+        </div>
+
         {/* Search */}
         <div className="relative w-full md:w-80">
           <Search size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -228,8 +259,12 @@ export default function Medications() {
         </div>
       </div>
 
-      {/* Grid of Medications */}
-      {loading ? (
+      {/* Main Content Area based on View Mode */}
+      {viewMode === 'pillbox' ? (
+        <PillOrganizer medications={medications} onTakeDose={handleTakeDose} />
+      ) : viewMode === 'refill' ? (
+        <RefillForecastCard />
+      ) : loading ? (
         <div className="text-center py-24">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-600 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-500">Loading prescription catalog...</p>

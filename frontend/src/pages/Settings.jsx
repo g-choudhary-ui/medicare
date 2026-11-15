@@ -55,7 +55,7 @@ export default function Settings() {
         conditions: Array.isArray(profile.conditions) ? profile.conditions.join(', ') : (profile.conditions || ''),
         emergencyContactName: profile.emergencyContact?.name || '',
         emergencyContactPhone: profile.emergencyContact?.phone || '',
-        emailReminders: profile.preferences?.emailReminders ?? true,
+        emailReminders: profile.preferences?.emailReminders ?? profile.emailReminders ?? true,
       })
     }
   }, [profile])
@@ -94,6 +94,7 @@ export default function Settings() {
         preferences: {
           emailReminders: formData.emailReminders,
         },
+        emailReminders: formData.emailReminders,
       }
       await updateProfile(payload)
       toast.success('Profile preferences updated')

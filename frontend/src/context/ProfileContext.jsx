@@ -187,7 +187,8 @@ export function ProfileProvider({ children }) {
     setIsLoading(true)
     try {
       const res = await profileApi.update(data)
-      setProfile(res.data.profile)
+      const updated = res.data?.data?.profile || res.data?.profile || data
+      setProfile((prev) => ({ ...prev, ...updated }))
       return res.data
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to update profile'
