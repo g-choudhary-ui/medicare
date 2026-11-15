@@ -12,6 +12,8 @@ import EmergencyCard from '../components/EmergencyCard'
 import AdherenceTracker from '../components/AdherenceTracker'
 import ActivityLog from '../components/ActivityLog'
 import AppointmentCard from '../components/AppointmentCard'
+import NotificationBanner from '../components/NotificationBanner'
+import { sendBrowserNotification } from '../services/notificationService'
 import toast from 'react-hot-toast'
 import {
   Pill,
@@ -89,6 +91,44 @@ export default function Dashboard() {
     loadDashboardData()
   }, [])
 
+  // Auto-reminder check for browser sessions
+  useEffect(() => {
+    if (!medications || medications.length === 0) return
+
+    const checkDueReminders = () => {
+      const now = new Date()
+      const hour = now.getHours()
+      const todayStr = now.toISOString().split('T')[0]
+
+      let currentSlot = null
+      if (hour >= 7 && hour < 12) currentSlot = 'morning'
+      else if (hour >= 12 && hour < 17) currentSlot = 'afternoon'
+      else if (hour >= 17 && hour < 21) currentSlot = 'evening'
+      else if (hour >= 21 || hour < 2) currentSlot = 'night'
+
+      if (!currentSlot) return
+
+      medications.forEach((med) => {
+        if (!med.isActive || med.reminderEnabled === false) return
+        if (med.times && med.times.includes(currentSlot)) {
+          const key = `browser_reminded_${todayStr}_${med.id || med._id}_${currentSlot}`
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, 'true')
+            sendBrowserNotification(
+              `💊 Time for ${med.name}! (${currentSlot.toUpperCase()})`,
+              `Dosage: ${med.dosage || 'Standard'}. ${med.instructions ? 'Instructions: ' + med.instructions : 'Take with water.'}`,
+              `med-${med.id || med._id}`
+            )
+          }
+        }
+      })
+    }
+
+    checkDueReminders()
+    const timer = setInterval(checkDueReminders, 60000)
+    return () => clearInterval(timer)
+  }, [medications])
+
   const handleTakeDose = async (medicationId, timeSlot) => {
     try {
       setTakingDose(true)
@@ -133,6 +173,9 @@ export default function Dashboard() {
           🩺
         </div>
       </div>
+
+      {/* Desktop & Sound Notifications Banner */}
+      <NotificationBanner patientName={patientName} />
 
       {/* Stats Row - 4 Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

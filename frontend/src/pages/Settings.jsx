@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useProfile } from '../context/ProfileContext'
 import { profileApi } from '../services/api'
+import { playNotificationChime, sendBrowserNotification } from '../services/notificationService'
 import toast from 'react-hot-toast'
 import {
   Settings as SettingsIcon,
@@ -262,7 +263,7 @@ export default function Settings() {
               </div>
 
               {/* Email Notifications toggle */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-gray-100 space-y-4">
                 <div className="flex items-center gap-3">
                   <input
                     id="emailReminders"
@@ -279,6 +280,32 @@ export default function Settings() {
                       Dispatches reminders and alerts whenever a scheduled dose is missed.
                     </p>
                   </div>
+                </div>
+
+                {/* Sound & Desktop Alerts Test */}
+                <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-2.5">
+                    <Bell size={18} className="text-teal-600" />
+                    <div>
+                      <p className="text-xs font-bold text-gray-800">Sound Chime & Desktop Notification</p>
+                      <p className="text-[11px] text-gray-500">Test the gentle audio alert for medication reminders</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playNotificationChime()
+                      sendBrowserNotification(
+                        '🔔 MediCare Sound Alert Test',
+                        'Notification sound and alert working perfectly!',
+                        'settings-test'
+                      )
+                      toast.success('Sound chime played!')
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-teal-50 text-teal-700 text-xs font-bold rounded-lg border border-teal-200 shadow-sm transition-colors"
+                  >
+                    Test Alert Sound
+                  </button>
                 </div>
               </div>
 
