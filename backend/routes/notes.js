@@ -8,9 +8,9 @@ const { logActivity } = require('../services/activityLogger');
 
 // ── Validation Schema ──────────────────────────────────────────────────────────
 const noteSchema = Joi.object({
-  date: Joi.string().isoDate().required(),
-  content: Joi.string().min(1).max(2000).required(),
-  mood: Joi.string().valid('happy', 'good', 'neutral', 'sad', 'pain', 'anxious', 'tired').default('good'),
+  date: Joi.string().max(50).default(() => new Date().toISOString().split('T')[0]),
+  content: Joi.string().max(2000).optional().allow('', null).default(''),
+  mood: Joi.string().max(50).optional().allow('', null).default('good'),
   symptoms: Joi.array().items(Joi.string().max(100)).default([]),
 });
 
@@ -49,10 +49,24 @@ router.post('/', auth, async (req, res) => {
   try {
     const { error, value } = noteSchema.validate(req.body, { abortEarly: false });
     if (error) {
+      const msg = error.details.map(d => d.message).join(', ');
       return res.status(400).json({
         success: false,
-        error: error.details.map(d => d.message).join(', '),
+        error: msg,
+        message: msg,
       });
+    }
+
+    if (!value.content && (!value.symptoms || value.symptoms.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a note or select at least one symptom',
+        message: 'Please enter a note or select at least one symptom',
+      });
+    }
+
+    if (!value.content) {
+      value.content = 'Symptoms observed: ' + value.symptoms.join(', ');
     }
 
     const { profileId, memberId, member } = req;

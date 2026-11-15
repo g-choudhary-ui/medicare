@@ -31,17 +31,16 @@ router.get('/dashboard', auth, async (req, res) => {
     const { startDate: weekStart } = getDateRange(7);
     const { startDate: thirtyStart } = getDateRange(30);
 
-    // Parallel fetches
+    // Parallel fetches (in-memory filtering avoids composite index requirements)
     const [medsSnap, apptSnap, thirtyLogsSnap, weekLogsSnap] = await Promise.all([
       db.collection('profiles').doc(profileId).collection('medications').where('isActive', '==', true).get(),
-      db.collection('profiles').doc(profileId).collection('appointments')
-        .where('isActive', '==', true).where('date', '>=', today).get(),
+      db.collection('profiles').doc(profileId).collection('appointments').where('isActive', '==', true).get(),
       db.collection('profiles').doc(profileId).collection('adherence_logs').where('date', '>=', thirtyStart).get(),
       db.collection('profiles').doc(profileId).collection('adherence_logs').where('date', '>=', weekStart).get(),
     ]);
 
     const totalMedications = medsSnap.size;
-    const upcomingAppointments = apptSnap.size;
+    const upcomingAppointments = apptSnap.docs.filter(d => (d.data().date || '') >= today).length;
 
     const thirtyLogs = thirtyLogsSnap.docs.map(d => d.data());
     const thirtyTaken = thirtyLogs.filter(l => l.status === 'taken').length;

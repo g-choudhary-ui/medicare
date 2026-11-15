@@ -77,7 +77,7 @@ export default function Notes() {
       setMood('good')
       loadNotes()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save note')
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save note')
     } finally {
       setSubmitting(false)
     }
