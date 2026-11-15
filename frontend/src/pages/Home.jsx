@@ -88,15 +88,20 @@ export default function Home() {
         email: createForm.email.trim(),
         phone: createForm.phone.trim(),
         bloodGroup: createForm.bloodGroup,
-        allergies: createForm.allergies.split(',').map(s => s.trim()).filter(Boolean),
-        conditions: createForm.conditions.split(',').map(s => s.trim()).filter(Boolean),
+        allergies: createForm.allergies ? createForm.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+        conditions: createForm.conditions ? createForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : [],
         emergencyContact: {
           name: createForm.emergencyContactName.trim(),
           phone: createForm.emergencyContactPhone.trim(),
         },
       }
       const result = await createProfile(payload)
-      setPasscodeModal({ passcode: result.passcode, profileId: result.profileId })
+      if (result && result.passcode) {
+        setPasscodeModal({ passcode: result.passcode, profileId: result.profileId })
+      } else {
+        toast.success('Profile created successfully!')
+        navigate('/dashboard')
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to create profile')
     } finally {

@@ -12,18 +12,26 @@ export function ProfileProvider({ children }) {
   const loadProfile = useCallback(async () => {
     const profileId = localStorage.getItem('profileId')
     const passcode = localStorage.getItem('passcode')
-    if (!profileId || !passcode) {
+    if (!profileId || !passcode || profileId === 'undefined' || passcode === 'undefined') {
+      localStorage.removeItem('profileId')
+      localStorage.removeItem('passcode')
       setIsLoading(false)
       return
     }
     try {
       setIsLoading(true)
       const res = await profileApi.get()
-      setProfile(res.data.profile)
-      setMember(res.data.currentMember)
+      const data = res.data || {}
+      const prof = data.profile || data
+      const mem = data.currentMember || (data.members && data.members[0]) || { role: 'owner', name: prof?.elderlyName }
+      setProfile(prof)
+      setMember(mem)
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load profile')
+      console.error('Error loading profile:', err)
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load profile')
       localStorage.clear()
+      setProfile(null)
+      setMember(null)
     } finally {
       setIsLoading(false)
     }
@@ -38,14 +46,18 @@ export function ProfileProvider({ children }) {
     setError(null)
     try {
       const res = await profileApi.create(data)
-      const { profileId, passcode, profile: prof } = res.data
-      localStorage.setItem('profileId', profileId)
-      localStorage.setItem('passcode', passcode)
+      const resData = res.data || {}
+      const profileId = resData.profileId || resData.data?.profileId
+      const passcode = resData.passcode || resData.data?.passcode
+      const prof = resData.profile || resData.data?.profile || { ...data, id: profileId }
+
+      if (profileId) localStorage.setItem('profileId', profileId)
+      if (passcode) localStorage.setItem('passcode', passcode)
       setProfile(prof)
       setMember({ role: 'owner', name: data.elderlyName })
-      return res.data
+      return { profileId, passcode, profile: prof, ...resData }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to create profile'
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to create profile'
       setError(msg)
       throw new Error(msg)
     } finally {
@@ -58,14 +70,20 @@ export function ProfileProvider({ children }) {
     setError(null)
     try {
       const res = await profileApi.join(data)
-      const { profileId, passcode, profile: prof, member: mem } = res.data
-      localStorage.setItem('profileId', profileId)
-      localStorage.setItem('passcode', passcode)
+      const resData = res.data || {}
+      const profileId = resData.profileId || resData.data?.profileId || data.profileId
+      const passcode = resData.passcode || resData.data?.passcode || data.passcode
+      const prof = resData.profile || resData.data?.profile || { id: profileId }
+      const mem = resData.member || resData.data?.member || { role: data.role, name: data.name }
+
+      if (profileId) localStorage.setItem('profileId', profileId)
+      if (passcode) localStorage.setItem('passcode', passcode)
+      if (resData.memberId) localStorage.setItem('memberId', resData.memberId)
       setProfile(prof)
       setMember(mem)
-      return res.data
+      return { profileId, passcode, profile: prof, member: mem, ...resData }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to join profile'
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to join profile'
       setError(msg)
       throw new Error(msg)
     } finally {

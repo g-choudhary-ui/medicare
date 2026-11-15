@@ -22,18 +22,18 @@ const generatePasscode = (len = 6) => {
 const createSchema = Joi.object({
   elderlyName: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
-  phone: Joi.string().pattern(/^[+\d\s\-().]{7,20}$/).required(),
-  bloodGroup: Joi.string().valid('A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown').required(),
+  phone: Joi.string().optional().allow('', null),
+  bloodGroup: Joi.string().valid('A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown').default('Unknown'),
   allergies: Joi.array().items(Joi.string().max(100)).default([]),
   conditions: Joi.array().items(Joi.string().max(200)).default([]),
   emergencyContact: Joi.object({
-    name: Joi.string().min(2).max(100).required(),
-    phone: Joi.string().pattern(/^[+\d\s\-().]{7,20}$/).required(),
+    name: Joi.string().max(100).optional().allow('', null),
+    phone: Joi.string().max(30).optional().allow('', null),
     relationship: Joi.string().max(50).default('Family'),
-  }).required(),
-  dateOfBirth: Joi.string().optional(),
-  address: Joi.string().max(300).optional(),
-  primaryDoctor: Joi.string().max(100).optional(),
+  }).optional().default({ name: '', phone: '', relationship: 'Family' }),
+  dateOfBirth: Joi.string().optional().allow('', null),
+  address: Joi.string().max(300).optional().allow('', null),
+  primaryDoctor: Joi.string().max(100).optional().allow('', null),
 });
 
 const joinSchema = Joi.object({
@@ -97,11 +97,14 @@ router.post('/create', async (req, res) => {
       elderlyName: value.elderlyName,
     });
 
+    const { passcodeHash: _, ...safeProfile } = profileData;
+
     res.status(201).json({
       success: true,
       data: {
         profileId,
         passcode: plainPasscode,
+        profile: { ...safeProfile, id: profileId },
         message: 'Profile created successfully. Save your passcode — it will not be shown again.',
       },
     });
@@ -157,12 +160,17 @@ router.post('/join', async (req, res) => {
 
     await logActivity(profileId, memberId, name, 'MEMBER_JOINED', { role, name, email });
 
+    const { passcodeHash: _, ...safeProfile } = profileData;
+
     res.status(200).json({
       success: true,
       data: {
         memberId,
         profileId,
+        passcode,
         role,
+        profile: { ...safeProfile, id: profileId },
+        member: { id: memberId, name, role, email },
         message: `Successfully joined profile as ${role}`,
       },
     });
@@ -195,6 +203,9 @@ router.get('/', auth, async (req, res) => {
       data: {
         profile: { ...safeProfile, id: profileId },
         members,
+        currentMember: req.memberId
+          ? (members.find(m => m.id === req.memberId) || { id: req.memberId, role: 'member', name: safeProfile.elderlyName })
+          : { id: profileId, role: 'owner', name: safeProfile.elderlyName },
       },
     });
   } catch (err) {

@@ -11,20 +11,32 @@ api.interceptors.request.use(
   (config) => {
     const profileId = localStorage.getItem('profileId')
     const passcode = localStorage.getItem('passcode')
-    if (profileId) config.headers['x-profile-id'] = profileId
-    if (passcode) config.headers['x-passcode'] = passcode
+    const memberId = localStorage.getItem('memberId')
+    if (profileId && profileId !== 'undefined') config.headers['x-profile-id'] = profileId
+    if (passcode && passcode !== 'undefined') config.headers['x-passcode'] = passcode
+    if (memberId && memberId !== 'undefined') config.headers['x-member-id'] = memberId
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// Response interceptor: handle errors
+// Response interceptor: unwrap and normalize data + handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data && typeof response.data === 'object' && response.data.data && typeof response.data.data === 'object') {
+      response.data = {
+        ...response.data,
+        ...response.data.data,
+      }
+    }
+    return response
+  },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear()
-      window.location.href = '/'
+      if (window.location.pathname !== '/') {
+        localStorage.clear()
+        window.location.href = '/'
+      }
     }
     return Promise.reject(error)
   }
