@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../context/ProfileContext'
+import { profileApi } from '../services/api'
 import toast from 'react-hot-toast'
-import { UserPlus, LogIn, Heart, Shield, Clock, X, Copy, CheckCircle } from 'lucide-react'
+import { UserPlus, LogIn, Heart, Shield, Clock, X, Copy, CheckCircle, KeyRound, RefreshCw } from 'lucide-react'
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
 const ROLES = [
@@ -59,12 +60,143 @@ function PasscodeModal({ passcode, profileId, onClose }) {
   )
 }
 
+function ForgotPasscodeModal({ onClose, onRecovered }) {
+  const [identifier, setIdentifier] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleRecover = async (e) => {
+    e.preventDefault()
+    if (!identifier.trim()) {
+      return toast.error('Please enter your Email, Patient Name, or Profile ID')
+    }
+    setLoading(true)
+    try {
+      const res = await profileApi.forgotPasscode(identifier.trim())
+      const data = res.data || {}
+      setResult(data)
+      toast.success('New passcode generated successfully!')
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Could not find matching profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCopy = () => {
+    if (!result?.newPasscode) return
+    navigator.clipboard.writeText(result.newPasscode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleApplyAndLogin = () => {
+    if (result && onRecovered) {
+      onRecovered(result.elderlyName || result.email || result.profileId, result.newPasscode)
+    }
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-left relative">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-lg"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center">
+            <KeyRound size={26} />
+          </div>
+          <div>
+            <h2 id="forgot-title" className="text-xl font-bold text-gray-800">Passcode Recovery</h2>
+            <p className="text-sm text-gray-500">Reset and retrieve your 6-character code</p>
+          </div>
+        </div>
+
+        {!result ? (
+          <form onSubmit={handleRecover} className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Enter your registered <strong>Email</strong>, <strong>Patient Name</strong>, or <strong>Profile ID</strong>. We will reset your passcode and display it right here.
+            </p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="recoveryId">
+                Identifier *
+              </label>
+              <input
+                id="recoveryId"
+                type="text"
+                autoFocus
+                placeholder="e.g. Garima Choudhary or email@example.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-teal-600 focus:outline-none text-base"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+              >
+                {loading ? <RefreshCw className="animate-spin" size={18} /> : 'Reset Passcode'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4 text-center">
+            <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-5">
+              <p className="text-sm font-bold text-emerald-800 uppercase tracking-wide">🎉 New Passcode Ready</p>
+              <p className="text-xs text-emerald-600 mt-1">Profile: <strong>{result.elderlyName}</strong></p>
+              <div className="my-3 py-3 bg-white rounded-xl border border-emerald-200">
+                <span className="text-3xl font-mono font-bold tracking-widest text-emerald-700">{result.newPasscode}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline"
+              >
+                {copied ? <CheckCircle size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copied ? 'Copied to clipboard!' : 'Copy new passcode'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleApplyAndLogin}
+              className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-md"
+            >
+              <LogIn size={18} /> Log In With New Passcode
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const { profile, createProfile, joinProfile, loginProfile } = useProfile()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('login') // 'login' | 'create' | 'join'
   const [loading, setLoading] = useState(false)
   const [passcodeModal, setPasscodeModal] = useState(null)
+  const [showForgotModal, setShowForgotModal] = useState(false)
   const [savedProfiles, setSavedProfiles] = useState([])
 
   // Load saved profiles from localStorage on mount
@@ -210,6 +342,16 @@ export default function Home() {
           passcode={passcodeModal.passcode}
           profileId={passcodeModal.profileId}
           onClose={() => { setPasscodeModal(null); navigate('/dashboard') }}
+        />
+      )}
+
+      {showForgotModal && (
+        <ForgotPasscodeModal
+          onClose={() => setShowForgotModal(false)}
+          onRecovered={(id, newPass) => {
+            setLoginForm({ identifier: id, passcode: newPass })
+            setActiveTab('login')
+          }}
         />
       )}
 
@@ -371,9 +513,18 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className={labelClass} htmlFor="loginPasscode">
-                    6-Character Passcode *
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className={labelClass} htmlFor="loginPasscode">
+                      6-Character Passcode *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(true)}
+                      className="text-xs sm:text-sm font-semibold text-teal-700 hover:text-teal-900 hover:underline mb-1"
+                    >
+                      Forgot passcode?
+                    </button>
+                  </div>
                   <input
                     id="loginPasscode"
                     type="password"

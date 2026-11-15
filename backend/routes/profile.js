@@ -6,7 +6,7 @@ const Joi = require('joi');
 const { db } = require('../services/firebaseAdmin');
 const auth = require('../middleware/auth');
 const { logActivity, getActivityLogs } = require('../services/activityLogger');
-const { sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeEmail, sendPasscodeResetEmail } = require('../services/emailService');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const generatePasscode = (len = 6) => {
@@ -225,6 +225,91 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[Profile Login]', err);
     res.status(500).json({ success: false, error: 'Failed to log in', message: 'Failed to log in' });
+  }
+});
+
+// ── POST /api/profile/forgot-passcode ──────────────────────────────────────────
+router.post('/forgot-passcode', async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your registered Email, Patient Name, or Profile ID',
+      });
+    }
+
+    const cleanId = identifier.trim();
+    let profileDoc = null;
+
+    // 1. Direct document ID check
+    const directSnap = await db.collection('profiles').doc(cleanId).get();
+    if (directSnap.exists) {
+      profileDoc = directSnap;
+    } else {
+      // 2. Query by email (lowercase)
+      const emailSnap = await db.collection('profiles').where('email', '==', cleanId.toLowerCase()).limit(1).get();
+      if (!emailSnap.empty) {
+        profileDoc = emailSnap.docs[0];
+      } else {
+        // 3. Query by exact email
+        const exactEmailSnap = await db.collection('profiles').where('email', '==', cleanId).limit(1).get();
+        if (!exactEmailSnap.empty) {
+          profileDoc = exactEmailSnap.docs[0];
+        } else {
+          // 4. Query by elderly patient name
+          const nameSnap = await db.collection('profiles').where('elderlyName', '==', cleanId).limit(1).get();
+          if (!nameSnap.empty) {
+            profileDoc = nameSnap.docs[0];
+          }
+        }
+      }
+    }
+
+    if (!profileDoc) {
+      return res.status(404).json({
+        success: false,
+        error: 'No profile found matching that Email, Patient Name, or Profile ID',
+      });
+    }
+
+    const profileData = profileDoc.data();
+    const newPasscode = generatePasscode(6);
+    const passcodeHash = await bcrypt.hash(newPasscode, 10);
+    const now = new Date().toISOString();
+
+    await db.collection('profiles').doc(profileDoc.id).update({
+      passcodeHash,
+      updatedAt: now,
+    });
+
+    // Send reset email if email is registered
+    if (profileData.email) {
+      sendPasscodeResetEmail(profileData.email, profileData.elderlyName, newPasscode, profileDoc.id).catch(e =>
+        console.warn('[ForgotPasscode] Email dispatch failed:', e.message)
+      );
+    }
+
+    await logActivity(profileDoc.id, profileDoc.id, profileData.elderlyName, 'PASSCODE_RESET', {
+      method: 'forgot-passcode-recovery',
+    }).catch(() => {});
+
+    const { passcodeHash: _, ...safeProfile } = profileData;
+
+    return res.status(200).json({
+      success: true,
+      message: 'New passcode generated successfully!',
+      data: {
+        profileId: profileDoc.id,
+        elderlyName: profileData.elderlyName,
+        email: profileData.email || '',
+        newPasscode,
+        profile: { ...safeProfile, id: profileDoc.id },
+      },
+    });
+  } catch (err) {
+    console.error('[Forgot Passcode Error]', err);
+    res.status(500).json({ success: false, error: 'Failed to reset passcode: ' + err.message });
   }
 });
 
