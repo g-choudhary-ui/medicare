@@ -41,7 +41,7 @@ const createLimiter = rateLimit({
 app.use('/api/profile/create', createLimiter);
 
 // ── Health Check ───────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.status(200).json({
     success: true,
     status: 'healthy',
@@ -86,18 +86,21 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start Server ───────────────────────────────────────────────────────────────
-const server = app.listen(PORT, () => {
-  console.log(`[MediCare] Server running on port ${PORT}`);
-  console.log(`[MediCare] Environment: ${process.env.NODE_ENV || 'development'}`);
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    console.log(`[MediCare] Server running on port ${PORT}`);
+    console.log(`[MediCare] Environment: ${process.env.NODE_ENV || 'development'}`);
 
-  // Start cron reminder jobs
-  try {
-    require('./services/reminderService');
-    console.log('[MediCare] Reminder service started');
-  } catch (err) {
-    console.error('[MediCare] Failed to start reminder service:', err.message);
-  }
-});
+    // Start cron reminder jobs
+    try {
+      require('./services/reminderService');
+      console.log('[MediCare] Reminder service started');
+    } catch (err) {
+      console.error('[MediCare] Failed to start reminder service:', err.message);
+    }
+  });
+}
 
 // ── Graceful Shutdown ──────────────────────────────────────────────────────────
 const shutdown = (signal) => {
