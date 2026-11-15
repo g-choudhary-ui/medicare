@@ -90,6 +90,84 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// ── GET /api/medications/refill-forecast ──────────────────────────────────────
+router.get('/refill-forecast', auth, async (req, res) => {
+  try {
+    const { profileId } = req;
+    const medsSnap = await db
+      .collection('profiles')
+      .doc(profileId)
+      .collection('medications')
+      .where('isActive', '==', true)
+      .get();
+
+    const logsSnap = await db
+      .collection('profiles')
+      .doc(profileId)
+      .collection('adherence_logs')
+      .where('status', '==', 'taken')
+      .get();
+
+    const takenCounts = {};
+    logsSnap.docs.forEach(doc => {
+      const data = doc.data();
+      takenCounts[data.medicationId] = (takenCounts[data.medicationId] || 0) + 1;
+    });
+
+    const now = new Date();
+    const forecast = medsSnap.docs.map(doc => {
+      const med = { id: doc.id, ...doc.data() };
+      const totalStock = Number(med.stock) || 30; // standard 30-day bottle
+      const dailyDoseCount = Math.max(1, (med.times || []).length);
+      const takenSoFar = takenCounts[med.id] || 0;
+      const remainingDoses = Math.max(0, totalStock - (takenSoFar % totalStock));
+      const daysRemaining = Math.max(0, Math.floor(remainingDoses / dailyDoseCount));
+
+      const runoutDate = new Date();
+      runoutDate.setDate(now.getDate() + daysRemaining);
+
+      let status = 'OK';
+      let alertMessage = `Supply healthy (${daysRemaining} days remaining).`;
+      if (daysRemaining <= 3) {
+        status = 'CRITICAL_REFILL';
+        alertMessage = `⚠️ Urgent: Runs out in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}! Reorder immediately.`;
+      } else if (daysRemaining <= 7) {
+        status = 'REFILL_SOON';
+        alertMessage = `Running low: ${daysRemaining} days remaining. Plan refill this week.`;
+      }
+
+      return {
+        id: med.id,
+        name: med.name,
+        dosage: med.dosage,
+        color: med.color,
+        prescribedBy: med.prescribedBy,
+        totalStock,
+        remainingDoses,
+        dailyDoseCount,
+        daysRemaining,
+        runoutDate: runoutDate.toISOString().split('T')[0],
+        status,
+        alertMessage,
+      };
+    });
+
+    // Sort by most urgent refill needed first
+    forecast.sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+    res.json({
+      success: true,
+      data: {
+        forecast,
+        lowSupplyCount: forecast.filter(f => f.daysRemaining <= 7).length,
+      },
+    });
+  } catch (err) {
+    console.error('[Refill Forecast]', err);
+    res.status(500).json({ success: false, error: 'Failed to calculate refill forecast' });
+  }
+});
+
 // ── POST /api/medications ──────────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {

@@ -13,6 +13,10 @@ import AdherenceTracker from '../components/AdherenceTracker'
 import ActivityLog from '../components/ActivityLog'
 import AppointmentCard from '../components/AppointmentCard'
 import NotificationBanner from '../components/NotificationBanner'
+import SeniorModeView from '../components/SeniorModeView'
+import PillOrganizer from '../components/PillOrganizer'
+import AiDrugChecker from '../components/AiDrugChecker'
+import RefillForecastCard from '../components/RefillForecastCard'
 import { sendBrowserNotification } from '../services/notificationService'
 import toast from 'react-hot-toast'
 import {
@@ -28,7 +32,7 @@ import {
 } from 'lucide-react'
 
 export default function Dashboard() {
-  const { profile } = useProfile()
+  const { profile, persona } = useProfile()
   const [stats, setStats] = useState({
     adherencePercentage: 0,
     streak: 0,
@@ -154,6 +158,18 @@ export default function Dashboard() {
 
   const patientName = profile?.elderlyName || 'Loved One'
 
+  // Senior Mode View (Simplified, high-contrast, 3-card layout)
+  if (persona === 'senior') {
+    return (
+      <SeniorModeView
+        profile={profile}
+        medications={medications}
+        appointments={upcomingAppointments}
+        onTakeDose={handleTakeDose}
+      />
+    )
+  }
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Welcome Banner */}
@@ -241,6 +257,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* 7-Day Physical Skeuomorphic Pill Organizer */}
+      <PillOrganizer
+        medications={medications}
+        onTakeDose={handleTakeDose}
+      />
+
+      {/* Google Gemini AI Polypharmacy Drug-Drug & Food Safety Checker */}
+      <AiDrugChecker />
+
+      {/* Automated Prescription Refill Forecaster */}
+      <RefillForecastCard />
 
       {/* Main Grid: Today's Meds Tracker + Side info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

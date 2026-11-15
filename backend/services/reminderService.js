@@ -217,6 +217,41 @@ const checkMedicationSchedule = async () => {
               }
             }
           }
+
+          // 3. Multi-Tier Escalation Engine (Tier 3: 90+ minutes overdue unattended)
+          const criticalThresholdMinutes = 90;
+          if (currentTotalMinutes - slotTotalMinutes >= criticalThresholdMinutes) {
+            const criticalKey = `critical_sos_${todayStr}_${medId}_${slot}`;
+            const criticalAlreadySent = await hasReminderBeenSent(profileId, criticalKey);
+
+            if (!criticalAlreadySent) {
+              const takenSnap = await db
+                .collection('profiles')
+                .doc(profileId)
+                .collection('adherence_logs')
+                .where('medicationId', '==', medId)
+                .where('date', '==', todayStr)
+                .where('timeSlot', '==', slot)
+                .where('status', '==', 'taken')
+                .get();
+
+              if (takenSnap.empty) {
+                console.log(`[Multi-Tier Escalation] Dose for ${med.name} is 90+ mins overdue! Triggering critical emergency escalation.`);
+                await recordReminderSent(profileId, criticalKey, 'CRITICAL_90M_ESCALATION', {
+                  medicationId: medId,
+                  medicationName: med.name,
+                  slot,
+                  date: todayStr,
+                });
+                await logActivity(profileId, 'system', 'MediCare Escalation Engine', 'CRITICAL_DOSE_UNATTENDED_90M', {
+                  medicationId: medId,
+                  medicationName: med.name,
+                  slot,
+                  alertTier: 'TIER_3_CRITICAL',
+                });
+              }
+            }
+          }
         }
       }
     }

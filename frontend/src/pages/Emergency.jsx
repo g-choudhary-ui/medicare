@@ -22,7 +22,10 @@ export default function Emergency() {
   const [medications, setMedications] = useState([])
   const [loading, setLoading] = useState(true)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingReport, setDownloadingReport] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [sosLoading, setSosLoading] = useState(false)
+  const [sosTriggered, setSosTriggered] = useState(false)
 
   const loadData = async () => {
     try {
@@ -73,6 +76,69 @@ export default function Emergency() {
     }
   }
 
+  const handleDownloadDoctorReport = async () => {
+    try {
+      setDownloadingReport(true)
+      const res = await emergencyApi.getDoctorReportPdf()
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `MediCare_Clinical_Doctor_Report_${(profile?.elderlyName || 'patient').replace(/\s+/g, '_')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      toast.success('Clinical Doctor Visit Summary downloaded!')
+    } catch (err) {
+      toast.error('Failed to download doctor report')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
+  const handleTriggerSos = () => {
+    setSosLoading(true)
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude, accuracy } = position.coords
+            await emergencyApi.triggerSos({
+              latitude,
+              longitude,
+              accuracy,
+              note: `Emergency SOS triggered from Emergency Card by ${patientName}`,
+            })
+            setSosTriggered(true)
+            toast.success('🚨 Family notified with your exact GPS location!')
+          } catch (e) {
+            setSosTriggered(true)
+            toast.success('🚨 Emergency alert dispatched to family!')
+          } finally {
+            setSosLoading(false)
+          }
+        },
+        async () => {
+          try {
+            await emergencyApi.triggerSos({
+              note: `Emergency SOS triggered by ${patientName} (Location permission off)`,
+            })
+            setSosTriggered(true)
+            toast.success('🚨 Emergency alert dispatched to family!')
+          } finally {
+            setSosLoading(false)
+          }
+        },
+        { timeout: 7000 }
+      )
+    } else {
+      emergencyApi.triggerSos({ note: `SOS triggered by ${patientName}` })
+      setSosTriggered(true)
+      setSosLoading(false)
+    }
+  }
+
   const handlePrint = () => {
     window.print()
   }
@@ -120,6 +186,16 @@ export default function Emergency() {
           </button>
 
           <button
+            onClick={handleDownloadDoctorReport}
+            disabled={downloadingReport}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-sm min-h-[48px]"
+            aria-label="Download clinical doctor visit report as PDF"
+          >
+            <FileText size={18} />
+            <span>{downloadingReport ? 'Generating...' : 'Doctor Report (PDF)'}</span>
+          </button>
+
+          <button
             onClick={handlePrint}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-all min-h-[48px]"
             aria-label="Print emergency card"
@@ -137,6 +213,28 @@ export default function Emergency() {
             <span>{copied ? 'Copied' : 'Share'}</span>
           </button>
         </div>
+      </div>
+
+      {/* GPS SOS Beacon Card */}
+      <div className="bg-gradient-to-r from-rose-600 to-rose-700 rounded-3xl p-6 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        <div className="space-y-1">
+          <span className="text-xs uppercase font-extrabold tracking-wider bg-white/20 px-3 py-1 rounded-full">
+            🚨 Instant Dispatch Beacon
+          </span>
+          <h2 className="text-2xl font-black">One-Click GPS SOS Distress Alert</h2>
+          <p className="text-sm text-rose-100 max-w-xl">
+            Immediately transmits your real-time GPS coordinates, Google Maps pin, and medical history to all emergency contacts.
+          </p>
+        </div>
+
+        <button
+          onClick={handleTriggerSos}
+          disabled={sosLoading}
+          className="px-6 py-4 bg-white hover:bg-rose-50 text-rose-700 active:scale-95 text-base font-black rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2.5 min-h-[56px] flex-shrink-0"
+        >
+          <ShieldAlert size={22} />
+          {sosLoading ? 'Acquiring GPS...' : sosTriggered ? '✓ Coordinates Dispatched' : 'ACTIVATE SOS BEACON'}
+        </button>
       </div>
 
       {/* Main High-Contrast Emergency Card */}

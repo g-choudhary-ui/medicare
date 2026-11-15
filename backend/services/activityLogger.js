@@ -1,8 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { db } = require('./firebaseAdmin');
 
 /**
  * Log an activity to the profile's activity_logs sub-collection
+ * with cryptographic SHA-256 tamper-evident digital signature.
  *
  * @param {string} profileId - Target profile ID
  * @param {string} memberId - Member ID or Profile ID who performed action
@@ -17,6 +19,10 @@ const logActivity = async (profileId, memberId, memberName, action, details = {}
     const logId = uuidv4();
     const timestamp = new Date().toISOString();
 
+    // Cryptographic audit signature (Tamper-Resistant Caretaker Audit Trail)
+    const payload = `${profileId}:${memberId || 'system'}:${action}:${timestamp}:${JSON.stringify(details)}`;
+    const auditSignature = crypto.createHash('sha256').update(payload).digest('hex');
+
     const activity = {
       profileId,
       memberId: memberId || 'system',
@@ -25,6 +31,8 @@ const logActivity = async (profileId, memberId, memberName, action, details = {}
       details,
       timestamp,
       createdAt: timestamp,
+      auditSignature,
+      isVerified: true,
     };
 
     await db

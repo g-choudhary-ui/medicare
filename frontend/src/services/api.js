@@ -60,6 +60,7 @@ export const medicationsApi = {
   update: (id, data) => api.put(`/medications/${id}`, data),
   delete: (id) => api.delete(`/medications/${id}`),
   take: (id, timeSlot) => api.post(`/medications/${id}/take`, { timeSlot }),
+  getRefillForecast: () => api.get('/medications/refill-forecast'),
 }
 
 // Appointments APIs
@@ -88,6 +89,13 @@ export const analyticsApi = {
 export const emergencyApi = {
   get: () => api.get('/emergency'),
   getPdf: () => api.get('/emergency/pdf', { responseType: 'blob' }),
+  getDoctorReportPdf: () => api.get('/emergency/doctor-report', { responseType: 'blob' }),
+  triggerSos: (data) => api.post('/emergency/sos', data),
+}
+
+// AI APIs (Google Gemini Drug & Food Interaction Checker)
+export const aiApi = {
+  getDrugCheck: () => api.get('/ai/drug-check'),
 }
 
 // Notes APIs

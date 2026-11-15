@@ -59,6 +59,7 @@ app.use('/api/adherence', require('./routes/adherence'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/emergency', require('./routes/emergency'));
 app.use('/api/notes', require('./routes/notes'));
+app.use('/api/ai', require('./routes/ai'));
 
 // ── Static Frontend (Docker monorepo) ─────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public'), {

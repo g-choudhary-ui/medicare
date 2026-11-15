@@ -18,7 +18,7 @@ const navItems = [
 ]
 
 export default function Layout({ children }) {
-  const { profile, member, logout } = useProfile()
+  const { profile, member, logout, persona, togglePersona, fontSize, setFontSize } = useProfile()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [highContrast, setHighContrast] = useState(false)
@@ -33,6 +33,17 @@ export default function Layout({ children }) {
     setHighContrast(!highContrast)
     document.body.classList.toggle('high-contrast')
   }
+
+  // Circadian Ambiance (Morning ☀️, Afternoon 🌤️, Sunset 🌅, Night 🌙)
+  const getCircadianAmbiance = () => {
+    const hr = new Date().getHours()
+    if (hr >= 6 && hr < 12) return { bg: 'bg-slate-50', icon: '☀️', label: 'Morning Freshness' }
+    if (hr >= 12 && hr < 17) return { bg: 'bg-slate-50', icon: '🌤️', label: 'Afternoon Focus' }
+    if (hr >= 17 && hr < 20) return { bg: 'bg-amber-50/30', icon: '🌅', label: 'Calming Sunset' }
+    return { bg: 'bg-stone-50', icon: '🌙', label: 'Melatonin-Preserving Night' }
+  }
+
+  const circadian = getCircadianAmbiance()
 
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all min-h-[48px] ${
@@ -99,7 +110,7 @@ export default function Layout({ children }) {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className={`min-h-screen ${circadian.bg} flex transition-colors duration-500`}>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-20 shadow-sm">
         <Sidebar />
@@ -152,6 +163,63 @@ export default function Layout({ children }) {
             {highContrast ? <Sun size={22} /> : <Moon size={22} />}
           </button>
         </header>
+
+        {/* Global Control Bar with Persona Switcher & Font Scaler */}
+        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/80 px-4 md:px-8 py-2.5 flex items-center justify-between sticky top-0 z-10 shadow-2xs">
+          <div className="flex items-center gap-3">
+            {/* Persona Switcher */}
+            <button
+              onClick={togglePersona}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border min-h-[38px] ${
+                persona === 'senior'
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                  : 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100'
+              }`}
+              title="Toggle between Senior-focused view and Caregiver clinical dashboard"
+            >
+              <span>{persona === 'senior' ? '👴 Senior Mode' : '🩺 Caregiver Mode'}</span>
+            </button>
+
+            {/* Circadian Badge */}
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200/60">
+              <span>{circadian.icon}</span> {circadian.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Font Scaler */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              {[
+                { id: 'sm', label: 'A-' },
+                { id: 'md', label: 'A' },
+                { id: 'lg', label: 'A+' },
+                { id: 'xl', label: 'A++' },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setFontSize(btn.id)}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
+                    fontSize === btn.id
+                      ? 'bg-teal-600 text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={`Font size ${btn.label}`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            {/* High Contrast Quick Toggle */}
+            <button
+              onClick={toggleContrast}
+              className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-600 text-xs font-semibold hidden md:flex items-center gap-1 border border-gray-200"
+              title="Toggle High Contrast"
+            >
+              {highContrast ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
+        </div>
 
         {/* Page content */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 pb-20 lg:pb-8" role="main">

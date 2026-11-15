@@ -9,6 +9,38 @@ export function ProfileProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Persona mode: 'caregiver' | 'senior'
+  const [persona, setPersonaState] = useState(() => {
+    return localStorage.getItem('medicare_persona') || 'caregiver'
+  })
+
+  // Font size scaler: 'sm' (16px), 'md' (18px default), 'lg' (21px), 'xl' (24px)
+  const [fontSize, setFontSizeState] = useState(() => {
+    return localStorage.getItem('medicare_fontsize') || 'md'
+  })
+
+  const setPersona = (mode) => {
+    setPersonaState(mode)
+    localStorage.setItem('medicare_persona', mode)
+  }
+
+  const togglePersona = () => {
+    const next = persona === 'senior' ? 'caregiver' : 'senior'
+    setPersona(next)
+  }
+
+  const setFontSize = (size) => {
+    setFontSizeState(size)
+    localStorage.setItem('medicare_fontsize', size)
+    const sizeMap = { sm: '16px', md: '18px', lg: '21px', xl: '24px' }
+    document.documentElement.style.fontSize = sizeMap[size] || '18px'
+  }
+
+  useEffect(() => {
+    const sizeMap = { sm: '16px', md: '18px', lg: '21px', xl: '24px' }
+    document.documentElement.style.fontSize = sizeMap[fontSize] || '18px'
+  }, [fontSize])
+
   const loadProfile = useCallback(async () => {
     const profileId = localStorage.getItem('profileId')
     const passcode = localStorage.getItem('passcode')
@@ -167,7 +199,23 @@ export function ProfileProvider({ children }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, member, isLoading, error, createProfile, joinProfile, loginProfile, logout, updateProfile, loadProfile }}>
+    <ProfileContext.Provider value={{
+      profile,
+      member,
+      isLoading,
+      error,
+      persona,
+      setPersona,
+      togglePersona,
+      fontSize,
+      setFontSize,
+      createProfile,
+      joinProfile,
+      loginProfile,
+      logout,
+      updateProfile,
+      loadProfile,
+    }}>
       {children}
     </ProfileContext.Provider>
   )
