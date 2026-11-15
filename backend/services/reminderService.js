@@ -391,6 +391,7 @@ console.log('  - Daily at 08:00: Morning digest');
 console.log('  - Hourly: Appointments within 24 hours');
 
 module.exports = {
+  getProfileNotificationEmails,
   checkMedicationSchedule,
   sendMorningDigests,
   checkAppointmentReminders,
