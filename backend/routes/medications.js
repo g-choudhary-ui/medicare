@@ -61,8 +61,9 @@ router.get('/', auth, async (req, res) => {
       query = query.where('isActive', '==', true);
     }
 
-    const snap = await query.orderBy('createdAt', 'desc').get();
-    const medications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await query.get();
+    let medications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    medications.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
     // For each medication, attach today's taken status
     const today = new Date().toISOString().split('T')[0];

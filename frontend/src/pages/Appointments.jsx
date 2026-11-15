@@ -93,7 +93,7 @@ export default function Appointments() {
       setModalOpen(false)
       loadAppointments()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save appointment')
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save appointment')
     } finally {
       setSaving(false)
     }

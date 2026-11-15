@@ -30,8 +30,9 @@ router.get('/', auth, async (req, res) => {
       query = query.where('date', '>=', startDate).where('date', '<=', endDate);
     }
 
-    const snap = await query.orderBy('date', 'desc').get();
-    const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snap = await query.get();
+    let notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    notes.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     res.json({
       success: true,

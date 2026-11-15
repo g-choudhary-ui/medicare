@@ -246,10 +246,10 @@ router.get('/members', auth, async (req, res) => {
       .doc(req.profileId)
       .collection('members')
       .where('isActive', '==', true)
-      .orderBy('joinedAt', 'asc')
       .get();
 
     const members = membersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    members.sort((a, b) => (a.joinedAt || '').localeCompare(b.joinedAt || ''));
     res.json({ success: true, data: { members } });
   } catch (err) {
     console.error('[Members List]', err);

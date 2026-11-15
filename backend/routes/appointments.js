@@ -8,15 +8,15 @@ const { logActivity } = require('../services/activityLogger');
 
 // ── Validation Schema ──────────────────────────────────────────────────────────
 const appointmentSchema = Joi.object({
-  doctorName: Joi.string().min(2).max(150).required(),
+  doctorName: Joi.string().min(1).max(150).required(),
   specialty: Joi.string().max(100).optional().allow('', null),
-  date: Joi.string().isoDate().required(),
-  time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+  date: Joi.string().max(50).required(),
+  time: Joi.string().max(50).optional().allow('', null),
   location: Joi.string().max(300).optional().allow('', null),
   notes: Joi.string().max(1000).optional().allow('', null),
   reminderEnabled: Joi.boolean().default(true),
   appointmentType: Joi.string().valid('in-person','virtual','phone').default('in-person'),
-  followUpDate: Joi.string().isoDate().optional().allow('', null),
+  followUpDate: Joi.string().max(50).optional().allow('', null),
 });
 
 // ── GET /api/appointments ──────────────────────────────────────────────────────
@@ -32,19 +32,22 @@ router.get('/', auth, async (req, res) => {
       .collection('appointments')
       .where('isActive', '==', true);
 
-    const snap = await query.orderBy('date', 'asc').get();
+    const snap = await query.get();
     let appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+    // In-memory sort to avoid requiring composite indexes in Firestore
+    appointments.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
     if (filter === 'upcoming') {
-      appointments = appointments.filter(a => a.date >= today);
+      appointments = appointments.filter(a => (a.date || '') >= today);
     } else if (filter === 'past') {
-      appointments = appointments.filter(a => a.date < today);
+      appointments = appointments.filter(a => (a.date || '') < today);
     }
 
     res.json({ success: true, data: { appointments } });
   } catch (err) {
     console.error('[Appointments Get]', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch appointments' });
+    res.status(500).json({ success: false, error: err.message, message: 'Failed to fetch appointments' });
   }
 });
 
@@ -53,9 +56,11 @@ router.post('/', auth, async (req, res) => {
   try {
     const { error, value } = appointmentSchema.validate(req.body, { abortEarly: false });
     if (error) {
+      const msg = error.details.map(d => d.message).join(', ');
       return res.status(400).json({
         success: false,
-        error: error.details.map(d => d.message).join(', '),
+        error: msg,
+        message: msg,
       });
     }
 
