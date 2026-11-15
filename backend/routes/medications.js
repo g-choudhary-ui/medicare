@@ -10,7 +10,15 @@ const { logActivity } = require('../services/activityLogger');
 const medicationSchema = Joi.object({
   name: Joi.string().min(1).max(200).required(),
   dosage: Joi.string().min(1).max(100).required(),
-  frequency: Joi.string().valid('once_daily','twice_daily','thrice_daily','four_times_daily','weekly','as_needed','custom').required(),
+  frequency: Joi.string().valid(
+    'daily', 'once_daily',
+    'twice daily', 'twice_daily',
+    'thrice daily', 'thrice_daily',
+    'four_times_daily',
+    'weekly',
+    'as needed', 'as_needed',
+    'custom'
+  ).required(),
   times: Joi.array()
     .items(Joi.string().valid('morning','afternoon','evening','night'))
     .min(1)
