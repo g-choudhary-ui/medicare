@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-size: 18px;
+    min-height: 100vh;
+    background-color: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+.high-contrast {
+  filter: contrast(1.5);
+}
+
+@keyframes pulse-fire {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.animate-fire {
+  animation: pulse-fire 1.5s ease-in-out infinite;
+}
