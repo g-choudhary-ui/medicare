@@ -20,21 +20,30 @@ const generatePasscode = (len = 6) => {
 
 // ── Validation Schemas ─────────────────────────────────────────────────────────
 const createSchema = Joi.object({
-  elderlyName: Joi.string().min(2).max(100).required(),
-  email: Joi.string().email().required(),
-  phone: Joi.string().optional().allow('', null),
+  elderlyName: Joi.string().min(1).max(100).optional(),
+  patientName: Joi.string().min(1).max(100).optional(),
+  name: Joi.string().min(1).max(100).optional(),
+  email: Joi.string().email().allow('', null).optional().default(''),
+  phone: Joi.string().optional().allow('', null).default(''),
   bloodGroup: Joi.string().valid('A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown').default('Unknown'),
-  allergies: Joi.array().items(Joi.string().max(100)).default([]),
-  conditions: Joi.array().items(Joi.string().max(200)).default([]),
-  emergencyContact: Joi.object({
-    name: Joi.string().max(100).optional().allow('', null),
-    phone: Joi.string().max(30).optional().allow('', null),
-    relationship: Joi.string().max(50).default('Family'),
-  }).optional().default({ name: '', phone: '', relationship: 'Family' }),
+  allergies: Joi.alternatives().try(
+    Joi.array().items(Joi.string().max(100)),
+    Joi.string().allow('', null)
+  ).default([]),
+  conditions: Joi.alternatives().try(
+    Joi.array().items(Joi.string().max(200)),
+    Joi.string().allow('', null)
+  ).default([]),
+  emergencyContact: Joi.object().unknown(true).optional().default({ name: '', phone: '', relationship: 'Family' }),
+  emergencyContactName: Joi.string().allow('', null).optional(),
+  emergencyContactPhone: Joi.string().allow('', null).optional(),
   dateOfBirth: Joi.string().optional().allow('', null),
   address: Joi.string().max(300).optional().allow('', null),
   primaryDoctor: Joi.string().max(100).optional().allow('', null),
-});
+  caregiverName: Joi.string().allow('', null).optional(),
+  relationship: Joi.string().allow('', null).optional(),
+  passcode: Joi.string().allow('', null).optional(),
+}).unknown(true);
 
 const loginSchema = Joi.object({
   identifier: Joi.string().required(),
@@ -83,13 +92,22 @@ router.post('/create', async (req, res) => {
       });
     }
 
-    const plainPasscode = generatePasscode(6);
-    const passcodeHash = await bcrypt.hash(plainPasscode, 12);
+    const elderlyName = (value.elderlyName || value.patientName || value.name || 'Elderly Patient').trim();
+    const email = (value.email || '').trim();
+    const plainPasscode = value.passcode || generatePasscode(6);
+    const passcodeHash = await bcrypt.hash(plainPasscode, 10);
     const profileId = uuidv4();
     const now = new Date().toISOString();
 
+    const emergencyContact = typeof value.emergencyContact === 'object' && value.emergencyContact !== null ? { ...value.emergencyContact } : {};
+    if (value.emergencyContactName) emergencyContact.name = value.emergencyContactName;
+    if (value.emergencyContactPhone) emergencyContact.phone = value.emergencyContactPhone;
+
     const profileData = {
       ...value,
+      elderlyName,
+      email,
+      emergencyContact,
       passcodeHash,
       createdAt: now,
       updatedAt: now,
@@ -98,14 +116,20 @@ router.post('/create', async (req, res) => {
 
     await db.collection('profiles').doc(profileId).set(profileData);
 
-    // Send welcome email (non-blocking)
-    sendWelcomeEmail(value.email, value.elderlyName, plainPasscode, profileId).catch(err =>
-      console.error('[Email] Welcome email failed:', err.message)
-    );
+    // Send welcome email if email provided (non-blocking)
+    if (email) {
+      sendWelcomeEmail(email, elderlyName, plainPasscode, profileId).catch(err =>
+        console.error('[Email] Welcome email failed:', err.message)
+      );
+    }
 
-    await logActivity(profileId, profileId, value.elderlyName, 'PROFILE_CREATED', {
-      elderlyName: value.elderlyName,
-    });
+    try {
+      await logActivity(profileId, profileId, elderlyName, 'PROFILE_CREATED', {
+        elderlyName,
+      });
+    } catch (e) {
+      // Optional logging
+    }
 
     const { passcodeHash: _, ...safeProfile } = profileData;
 
@@ -120,7 +144,7 @@ router.post('/create', async (req, res) => {
     });
   } catch (err) {
     console.error('[Profile Create]', err);
-    res.status(500).json({ success: false, error: 'Failed to create profile' });
+    res.status(500).json({ success: false, error: 'Failed to create profile: ' + err.message });
   }
 });
 
